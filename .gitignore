@@ -1,7 +1,6 @@
-echo "target/
+target/
 .idea/
 .vscode/
 *.iml
 *.log
 .DS_Store
-" > .gitignore
