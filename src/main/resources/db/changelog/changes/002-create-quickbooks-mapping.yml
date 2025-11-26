@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-quickbooks-mapping-table
+      author: aforo
+      changes:
+        - createTable:
+            tableName: quickbooks_mapping
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column: { name: entity_type, type: VARCHAR(50), constraints: { nullable: false } }
+              - column: { name: aforo_id, type: VARCHAR(100), constraints: { nullable: false } }
+              - column: { name: quickbooks_id, type: VARCHAR(50), constraints: { nullable: false } }
+              - column: { name: sync_version, type: INTEGER, constraints: { nullable: false }, defaultValueNumeric: 1 }
+              - column: { name: created_at, type: TIMESTAMP, constraints: { nullable: false }, defaultValueComputed: CURRENT_TIMESTAMP }
+              - column: { name: updated_at, type: TIMESTAMP, defaultValueComputed: CURRENT_TIMESTAMP }
+
+        - createIndex:
+            indexName: idx_qb_mapping_qb_id
+            tableName: quickbooks_mapping
+            columns:
+              - column: { name: quickbooks_id }

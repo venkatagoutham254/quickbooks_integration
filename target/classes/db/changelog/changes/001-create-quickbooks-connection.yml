@@ -1,0 +1,26 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-quickbooks-connection-table
+      author: aforo
+      changes:
+        - createTable:
+            tableName: quickbooks_connection
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+
+              - column: { name: realm_id, type: VARCHAR(50), constraints: { nullable: false } }
+              - column: { name: access_token, type: TEXT, constraints: { nullable: false } }
+              - column: { name: refresh_token, type: TEXT, constraints: { nullable: false } }
+              - column: { name: expires_at, type: TIMESTAMP, constraints: { nullable: false } }
+              - column: { name: refresh_token_expires_at, type: TIMESTAMP }
+              - column: { name: company_name, type: VARCHAR(255) }
+              - column: { name: is_active, type: BOOLEAN, constraints: { nullable: false }, defaultValueBoolean: true }
+              - column: { name: created_at, type: TIMESTAMP, constraints: { nullable: false }, defaultValueComputed: CURRENT_TIMESTAMP }
+              - column: { name: updated_at, type: TIMESTAMP, defaultValueComputed: CURRENT_TIMESTAMP }
+              - column: { name: last_sync_at, type: TIMESTAMP }

@@ -1,0 +1,39 @@
+version: "3.8"
+services:
+  quickbooks_pg:
+    image: postgres:15
+    container_name: quickbooks_pg
+    restart: always
+    environment:
+      POSTGRES_DB: aforo_quickbooks
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5439:5432"
+    networks:
+      - quickbooks-network
+    command: postgres -c timezone=UTC
+
+  quickbooks_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quickbooks_app
+    ports:
+      - "8095:8095"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://quickbooks_pg:5432/aforo_quickbooks
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      # Metering service URL - use host.docker.internal to reach host machine
+      - METERING_SERVICE_URL=http://host.docker.internal:8092
+    depends_on:
+      - quickbooks_pg
+    networks:
+      - quickbooks-network
+
+networks:
+  quickbooks-network:
+    driver: bridge
