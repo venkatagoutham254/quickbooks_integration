@@ -56,8 +56,10 @@ public class SecurityConfig {
         
         // Use setAllowedOriginPatterns instead of setAllowedOrigins for better compatibility
         configuration.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",     // All localhost ports including Swagger UI
-            "http://127.0.0.1:*"      // Also allow 127.0.0.1
+            "http://localhost:*",      // All localhost ports including Swagger UI
+            "http://127.0.0.1:*",      // Also allow 127.0.0.1
+            "http://aforo.space",      // Frontend HTTP domain
+            "https://aforo.space"      // Frontend HTTPS domain
         ));
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));

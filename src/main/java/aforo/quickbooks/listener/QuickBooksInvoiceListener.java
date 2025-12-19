@@ -9,6 +9,7 @@ import aforo.quickbooks.repository.QuickBooksConnectionRepository;
 import aforo.quickbooks.service.QuickBooksApiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -32,6 +33,9 @@ public class QuickBooksInvoiceListener {
     private final InvoiceMapper invoiceMapper;
     private final WebClient webClient;
     private final RatePlanServiceClient ratePlanServiceClient;
+
+    @Value("${aforo.metering-service.base-url}")
+    private String meteringServiceBaseUrl;
 
     /**
      * Handle invoice created event from metering service.
@@ -101,7 +105,12 @@ public class QuickBooksInvoiceListener {
             }
 
             // Fetch full invoice details from metering service
-            Map<String, Object> invoiceData = fetchInvoiceFromMeteringService(invoiceId);
+            if (jwtToken == null || jwtToken.isEmpty()) {
+                log.error("No JWT token provided in invoice event, cannot fetch invoice {}", invoiceId);
+                return;
+            }
+
+            Map<String, Object> invoiceData = fetchInvoiceFromMeteringService(invoiceId, organizationId, jwtToken);
             if (invoiceData == null) {
                 log.error("Failed to fetch invoice {} from metering service", invoiceId);
                 return;
@@ -178,12 +187,15 @@ public class QuickBooksInvoiceListener {
     /**
      * Fetch full invoice details from metering service.
      */
-    private Map<String, Object> fetchInvoiceFromMeteringService(Long invoiceId) {
+    private Map<String, Object> fetchInvoiceFromMeteringService(Long invoiceId, Long organizationId, String jwtToken) {
         try {
             // Call metering service to get invoice with line items
+            String invoiceUrl = meteringServiceBaseUrl + "/api/invoices/" + invoiceId;
             @SuppressWarnings("unchecked")
             Map<String, Object> invoice = webClient.get()
-                    .uri("http://localhost:8092/api/invoices/{id}", invoiceId)
+                    .uri(invoiceUrl)
+                    .header("Authorization", "Bearer " + jwtToken)
+                    .header("X-Organization-Id", organizationId.toString())
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block();
