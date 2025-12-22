@@ -2,6 +2,7 @@ package aforo.quickbooks.client;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -18,7 +19,8 @@ public class RatePlanServiceClient {
 
     private final WebClient webClient;
 
-    private static final String RATE_PLAN_SERVICE_URL = "http://3.208.93.68:8080/api/rateplans";
+    @Value("${aforo.rate-plan-service.base-url}")
+    private String ratePlanServiceBaseUrl;
 
     /**
      * Fetch rate plan details by ID.
@@ -33,7 +35,7 @@ public class RatePlanServiceClient {
 
             @SuppressWarnings("unchecked")
             Map<String, Object> ratePlan = webClient.get()
-                    .uri(RATE_PLAN_SERVICE_URL + "/" + ratePlanId)
+                    .uri(ratePlanServiceBaseUrl + "/api/rateplans/" + ratePlanId)
                     .header("Authorization", "Bearer " + jwtToken)
                     .header("Accept", MediaType.APPLICATION_JSON_VALUE)
                     .retrieve()

@@ -58,10 +58,13 @@ aforo:
     allowed-headers: "Authorization,Content-Type,X-Organization-Id"
     allow-credentials: true
   organization-service:
-    base-url: http://44.201.19.187:8081
+    base-url: ${ORGANIZATION_SERVICE_URL:http://44.201.19.187:8081}
     timeout-seconds: 30
   metering-service:
-    base-url: ${METERING_SERVICE_URL:http://localhost:8092}
+    base-url: ${METERING_SERVICE_URL:http://98.86.167.163:8092}
+    timeout-seconds: 30
+  rate-plan-service:
+    base-url: ${RATE_PLAN_SERVICE_URL:http://3.208.93.68:8080}
     timeout-seconds: 30
 
 # Resilience4j Retry Configuration

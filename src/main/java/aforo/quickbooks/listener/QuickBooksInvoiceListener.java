@@ -105,12 +105,7 @@ public class QuickBooksInvoiceListener {
             }
 
             // Fetch full invoice details from metering service
-            if (jwtToken == null || jwtToken.isEmpty()) {
-                log.error("No JWT token provided in invoice event, cannot fetch invoice {}", invoiceId);
-                return;
-            }
-
-            Map<String, Object> invoiceData = fetchInvoiceFromMeteringService(invoiceId, organizationId, jwtToken);
+            Map<String, Object> invoiceData = fetchInvoiceFromMeteringService(invoiceId);
             if (invoiceData == null) {
                 log.error("Failed to fetch invoice {} from metering service", invoiceId);
                 return;
@@ -187,15 +182,12 @@ public class QuickBooksInvoiceListener {
     /**
      * Fetch full invoice details from metering service.
      */
-    private Map<String, Object> fetchInvoiceFromMeteringService(Long invoiceId, Long organizationId, String jwtToken) {
+    private Map<String, Object> fetchInvoiceFromMeteringService(Long invoiceId) {
         try {
             // Call metering service to get invoice with line items
-            String invoiceUrl = meteringServiceBaseUrl + "/api/invoices/" + invoiceId;
             @SuppressWarnings("unchecked")
             Map<String, Object> invoice = webClient.get()
-                    .uri(invoiceUrl)
-                    .header("Authorization", "Bearer " + jwtToken)
-                    .header("X-Organization-Id", organizationId.toString())
+                    .uri(meteringServiceBaseUrl + "/api/invoices/{id}", invoiceId)
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block();
