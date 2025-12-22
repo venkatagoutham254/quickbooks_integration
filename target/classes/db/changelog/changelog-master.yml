@@ -1,9 +1,0 @@
-databaseChangeLog:
-  - include:
-      file: db/changelog/changes/001-create-quickbooks-connection.yml
-  - include:
-      file: db/changelog/changes/002-create-quickbooks-mapping.yml
-  - include:
-      file: db/changelog/changes/003-create-quickbooks-sync-log.yml
-  - include:
-      file: db/changelog/changes/004-add-tenancy.yml
