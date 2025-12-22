@@ -27,9 +27,11 @@ services:
       - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://quickbooks_pg:5432/aforo_quickbooks}
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-postgres}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-postgres}
-      - METERING_SERVICE_URL=${METERING_SERVICE_URL:-http://host.docker.internal:8092}
-      - QUICKBOOKS_OAUTH_REDIRECT_URI=${QUICKBOOKS_OAUTH_REDIRECT_URI:-http://localhost:8095/api/quickbooks/callback}
-      - JWT_SECRET=${JWT_SECRET:-}
+      - METERING_SERVICE_URL=${METERING_SERVICE_URL:-http://98.86.167.163:8092}
+      - QUICKBOOKS_OAUTH_REDIRECT_URI=${QUICKBOOKS_OAUTH_REDIRECT_URI:-http://quickbooks.aforo.space:8095/api/quickbooks/callback}
+      - JWT_SECRET=${JWT_SECRET:-change-me-please-change-me-32-bytes-min}
+      - ORGANIZATION_SERVICE_URL=${ORGANIZATION_SERVICE_URL:-http://44.201.19.187:8081}
+      - RATE_PLAN_SERVICE_URL=${RATE_PLAN_SERVICE_URL:-http://3.208.93.68:8080}
     depends_on:
       - quickbooks_pg
     networks:

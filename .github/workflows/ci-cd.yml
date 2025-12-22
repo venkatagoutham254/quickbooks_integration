@@ -37,14 +37,8 @@ jobs:
 
       - name: Restart app via SSH
         run: |
-          ssh -i ec2-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << EOF
+          ssh -i ec2-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
             cd /home/ec2-user
-            export QUICKBOOKS_OAUTH_REDIRECT_URI="${{ secrets.QUICKBOOKS_OAUTH_REDIRECT_URI }}"
-            export METERING_SERVICE_URL="${{ secrets.METERING_SERVICE_URL }}"
-            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
-            export SPRING_DATASOURCE_URL="${{ secrets.SPRING_DATASOURCE_URL }}"
-            export SPRING_DATASOURCE_USERNAME="${{ secrets.SPRING_DATASOURCE_USERNAME }}"
-            export SPRING_DATASOURCE_PASSWORD="${{ secrets.SPRING_DATASOURCE_PASSWORD }}"
             docker-compose down
             docker-compose up --build -d
           EOF
