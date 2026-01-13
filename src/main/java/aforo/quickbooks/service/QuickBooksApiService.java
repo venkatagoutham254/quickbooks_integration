@@ -75,6 +75,14 @@ public class QuickBooksApiService {
             ObjectNode qbCustomerJson = (ObjectNode) customerMapper.toQuickBooksFormat(customerRequest);
             String displayName = qbCustomerJson.get("DisplayName").asText();
             
+            // Normalize display name (trim whitespace) to prevent duplicate name errors
+            String normalizedDisplayName = displayName.trim();
+            if (!normalizedDisplayName.equals(displayName)) {
+                log.info("Normalized display name from '{}' to '{}'", displayName, normalizedDisplayName);
+                qbCustomerJson.put("DisplayName", normalizedDisplayName);
+                displayName = normalizedDisplayName;
+            }
+            
             // If no mapping exists, search QuickBooks for existing customer by name
             if (qbCustomerId == null) {
                 log.info("No mapping found, searching QuickBooks for customer with name: {}", displayName);
@@ -536,6 +544,9 @@ public class QuickBooksApiService {
         try {
             log.info("Searching for customer '{}' in QuickBooks by fetching all customers", displayName);
             
+            // Normalize the search name (trim and lowercase for comparison)
+            String normalizedSearchName = displayName.trim().toLowerCase();
+            
             // Fetch all customers (QuickBooks query API has issues, so we fetch all and filter)
             String url = apiConfig.getResourceUrl(connection.getRealmId(), "query") 
                        + "?query=" + java.net.URLEncoder.encode("SELECT * FROM Customer MAXRESULTS 1000", "UTF-8");
@@ -558,10 +569,11 @@ public class QuickBooksApiService {
                     java.util.List<Map<String, Object>> customers = 
                         (java.util.List<Map<String, Object>>) queryResponse.get("Customer");
                     
-                    // Filter by display name in Java
+                    // Filter by display name in Java with normalized comparison
                     for (Map<String, Object> customer : customers) {
                         String customerDisplayName = (String) customer.get("DisplayName");
-                        if (displayName.equalsIgnoreCase(customerDisplayName)) {
+                        if (customerDisplayName != null && 
+                            normalizedSearchName.equals(customerDisplayName.trim().toLowerCase())) {
                             String customerId = customer.get("Id").toString();
                             log.info("Found matching customer in QuickBooks: {} -> ID: {}", displayName, customerId);
                             return customerId;

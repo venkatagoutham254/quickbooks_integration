@@ -13,11 +13,13 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * Security configuration for the QuickBooks Integration service.
+ * 
+ * CORS configuration is now externalized via application.yml (aforo.cors.*)
+ * and can be overridden using CORS_ALLOWED_ORIGINS environment variable.
  */
 @Configuration
 @EnableWebSecurity
@@ -25,6 +27,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtTenantFilter jwtTenantFilter;
+    private final CorsProperties corsProperties;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -54,18 +57,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Use setAllowedOriginPatterns instead of setAllowedOrigins for better compatibility
-        configuration.setAllowedOriginPatterns(List.of(
-            "http://localhost:*",      // All localhost ports including Swagger UI
-            "http://127.0.0.1:*",      // Also allow 127.0.0.1
-            "http://aforo.space",      // Frontend HTTP domain
-            "https://aforo.space"      // Frontend HTTPS domain
-        ));
-        
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Total-Count"));
-        configuration.setAllowCredentials(true);
+        // Use origins from CorsProperties (externalized configuration)
+        configuration.setAllowedOriginPatterns(corsProperties.getAllowedOriginsList());
+        configuration.setAllowedMethods(corsProperties.getAllowedMethodsList());
+        configuration.setAllowedHeaders(corsProperties.getAllowedHeadersList());
+        configuration.setExposedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Total-Count"));
+        configuration.setAllowCredentials(corsProperties.isAllowCredentials());
         configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
