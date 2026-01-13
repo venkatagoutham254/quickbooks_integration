@@ -4,3 +4,18 @@ target/
 *.iml
 *.log
 .DS_Store
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+ec2-key.pem
+
+# Application-specific secrets
+application-local.yml
+application-prod.yml
+application-*.yml
+!application.yml
