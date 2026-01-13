@@ -25,9 +25,9 @@ public class CorsProperties {
 
     /**
      * Comma-separated list of allowed HTTP methods.
-     * Default: GET,POST,PUT,PATCH,DELETE,OPTIONS
+     * Default: GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD
      */
-    private String allowedMethods = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
+    private String allowedMethods = "GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD";
 
     /**
      * Comma-separated list of allowed headers.
