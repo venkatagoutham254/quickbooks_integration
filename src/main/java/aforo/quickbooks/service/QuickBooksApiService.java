@@ -621,9 +621,12 @@ public class QuickBooksApiService {
         try {
             log.info("Fetching invoice PDF from QuickBooks: invoice ID = {}", quickbooksInvoiceId);
             
-            String url = String.format("/v3/company/%s/invoice/%s/pdf", 
+            String url = String.format("%s/v3/company/%s/invoice/%s/pdf", 
+                                      apiConfig.getBaseUrl(),
                                       connection.getRealmId(), 
                                       quickbooksInvoiceId);
+            
+            log.debug("PDF URL: {}", url);
             
             byte[] pdfBytes = webClient.get()
                 .uri(url)

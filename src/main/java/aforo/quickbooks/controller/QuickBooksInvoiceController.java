@@ -2,6 +2,7 @@ package aforo.quickbooks.controller;
 
 import aforo.quickbooks.entity.QuickBooksMapping;
 import aforo.quickbooks.repository.QuickBooksMappingRepository;
+import aforo.quickbooks.security.TenantContext;
 import aforo.quickbooks.service.QuickBooksApiService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,24 +37,23 @@ public class QuickBooksInvoiceController {
     /**
      * Get list of invoices from QuickBooks.
      * Returns all invoices for the organization with pagination support.
+     * Organization ID is automatically extracted from JWT token.
      * 
-     * Example: GET /api/quickbooks/invoices?organizationId=1&maxResults=50&startPosition=1
+     * Example: GET /api/quickbooks/invoices?maxResults=50&startPosition=1
      */
     @GetMapping
     @Operation(
         summary = "Get invoices from QuickBooks",
-        description = "Fetch list of invoices from QuickBooks with pagination. Includes Aforo invoice IDs from mapping table."
+        description = "Fetch list of invoices from QuickBooks with pagination. Organization ID automatically extracted from JWT token."
     )
     public ResponseEntity<Map<String, Object>> getInvoices(
-            @Parameter(description = "Organization ID", required = true)
-            @RequestParam Long organizationId,
-            
             @Parameter(description = "Maximum number of results (1-1000, default 100)")
             @RequestParam(required = false, defaultValue = "100") Integer maxResults,
             
             @Parameter(description = "Starting position for pagination (default 1)")
             @RequestParam(required = false, defaultValue = "1") Integer startPosition) {
         
+        Long organizationId = TenantContext.require();
         log.info("Fetching invoices for organization: {}, maxResults: {}, startPosition: {}", 
                 organizationId, maxResults, startPosition);
         
@@ -74,21 +74,20 @@ public class QuickBooksInvoiceController {
     /**
      * Get single invoice details from QuickBooks.
      * Returns full invoice data including line items.
+     * Organization ID is automatically extracted from JWT token.
      * 
-     * Example: GET /api/quickbooks/invoices/163?organizationId=1
+     * Example: GET /api/quickbooks/invoices/163
      */
     @GetMapping("/{invoiceId}")
     @Operation(
         summary = "Get invoice details",
-        description = "Fetch detailed invoice information from QuickBooks including line items"
+        description = "Fetch detailed invoice information from QuickBooks including line items. Organization ID automatically extracted from JWT token."
     )
     public ResponseEntity<Map<String, Object>> getInvoice(
             @Parameter(description = "QuickBooks invoice ID", required = true)
-            @PathVariable String invoiceId,
-            
-            @Parameter(description = "Organization ID", required = true)
-            @RequestParam Long organizationId) {
+            @PathVariable String invoiceId) {
         
+        Long organizationId = TenantContext.require();
         log.info("Fetching invoice {} for organization: {}", invoiceId, organizationId);
         
         try {
@@ -113,26 +112,25 @@ public class QuickBooksInvoiceController {
     /**
      * Get invoice PDF from QuickBooks.
      * Returns the PDF file that can be viewed or downloaded.
+     * Organization ID is automatically extracted from JWT token.
      * 
-     * Example: GET /api/quickbooks/invoices/163/pdf?organizationId=1
+     * Example: GET /api/quickbooks/invoices/163/pdf?download=true
      * 
      * This will return the PDF with proper headers for inline viewing or download.
      */
     @GetMapping("/{invoiceId}/pdf")
     @Operation(
         summary = "Get invoice PDF",
-        description = "Download or view invoice PDF from QuickBooks. Returns the exact PDF as shown in QuickBooks."
+        description = "Download or view invoice PDF from QuickBooks. Organization ID automatically extracted from JWT token."
     )
     public ResponseEntity<byte[]> getInvoicePdf(
             @Parameter(description = "QuickBooks invoice ID", required = true)
             @PathVariable String invoiceId,
             
-            @Parameter(description = "Organization ID", required = true)
-            @RequestParam Long organizationId,
-            
             @Parameter(description = "Download as file (default: false = inline view)")
             @RequestParam(required = false, defaultValue = "false") boolean download) {
         
+        Long organizationId = TenantContext.require();
         log.info("Fetching PDF for invoice {} (organization: {}, download: {})", 
                 invoiceId, organizationId, download);
         
@@ -174,28 +172,6 @@ public class QuickBooksInvoiceController {
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Failed to fetch invoice PDF from QuickBooks: " + e.getMessage(),
                 e
-            );
-        }
-    }
-
-    /**
-     * Security check: Verify that the invoice belongs to the organization.
-     * Checks the mapping table to ensure the organization has access to this invoice.
-     */
-    private void verifyInvoiceOwnership(Long organizationId, String quickbooksInvoiceId) {
-        Optional<QuickBooksMapping> mapping = mappingRepository
-            .findByOrganizationIdAndEntityTypeAndQuickbooksId(
-                organizationId,
-                QuickBooksMapping.EntityType.INVOICE,
-                quickbooksInvoiceId
-            );
-        
-        if (mapping.isEmpty()) {
-            log.warn("Invoice {} not found or access denied for organization {}", 
-                    quickbooksInvoiceId, organizationId);
-            throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Invoice not found or access denied"
             );
         }
     }
