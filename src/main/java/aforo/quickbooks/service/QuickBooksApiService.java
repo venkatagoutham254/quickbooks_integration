@@ -604,4 +604,195 @@ public class QuickBooksApiService {
     private Map<String, Object> toMap(Object object) {
         return objectMapper.convertValue(object, new TypeReference<Map<String, Object>>() {});
     }
+
+    /**
+     * Get invoice PDF from QuickBooks.
+     * Returns the PDF file as byte array.
+     * 
+     * @param organizationId Organization ID
+     * @param quickbooksInvoiceId QuickBooks invoice ID
+     * @return PDF file as byte array
+     * @throws QuickBooksException if PDF cannot be fetched
+     */
+    @Retry(name = "quickbooks")
+    public byte[] getInvoicePdf(Long organizationId, String quickbooksInvoiceId) {
+        QuickBooksConnection connection = oauthService.getActiveConnection(organizationId);
+        
+        try {
+            log.info("Fetching invoice PDF from QuickBooks: invoice ID = {}", quickbooksInvoiceId);
+            
+            String url = String.format("/v3/company/%s/invoice/%s/pdf", 
+                                      connection.getRealmId(), 
+                                      quickbooksInvoiceId);
+            
+            byte[] pdfBytes = webClient.get()
+                .uri(url)
+                .header("Authorization", "Bearer " + connection.getAccessToken())
+                .header("Accept", "application/pdf")
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .block();
+            
+            if (pdfBytes == null || pdfBytes.length == 0) {
+                throw new QuickBooksException("Received empty PDF from QuickBooks");
+            }
+            
+            log.info("Successfully fetched invoice PDF: {} bytes", pdfBytes.length);
+            return pdfBytes;
+            
+        } catch (WebClientResponseException e) {
+            log.error("QuickBooks API error fetching PDF: {} - {}", 
+                     e.getStatusCode(), e.getResponseBodyAsString());
+            throw new QuickBooksException("Failed to fetch invoice PDF: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected error fetching invoice PDF: {}", e.getMessage(), e);
+            throw new QuickBooksException("Failed to fetch invoice PDF", e);
+        }
+    }
+
+    /**
+     * Get list of invoices from QuickBooks with pagination.
+     * Returns invoices with Aforo invoice IDs from mapping table.
+     * 
+     * @param organizationId Organization ID
+     * @param maxResults Maximum number of results (default 100, max 1000)
+     * @param startPosition Starting position for pagination (default 1)
+     * @return Map containing list of invoices and metadata
+     */
+    @Retry(name = "quickbooks")
+    public Map<String, Object> getInvoicesList(Long organizationId, Integer maxResults, Integer startPosition) {
+        QuickBooksConnection connection = oauthService.getActiveConnection(organizationId);
+        
+        // Set defaults and limits
+        int limit = maxResults != null && maxResults > 0 ? Math.min(maxResults, 1000) : 100;
+        int start = startPosition != null && startPosition > 0 ? startPosition : 1;
+        
+        try {
+            log.info("Fetching invoices from QuickBooks: org={}, limit={}, start={}", 
+                    organizationId, limit, start);
+            
+            // Build query - fetch all invoices sorted by creation date descending
+            String query = String.format("SELECT * FROM Invoice MAXRESULTS %d STARTPOSITION %d", limit, start);
+            String url = apiConfig.getResourceUrl(connection.getRealmId(), "query") 
+                       + "?query=" + java.net.URLEncoder.encode(query, "UTF-8");
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = webClient.get()
+                .uri(url)
+                .header("Authorization", "Bearer " + connection.getAccessToken())
+                .header("Accept", MediaType.APPLICATION_JSON_VALUE)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+            
+            // Extract invoices from response
+            java.util.List<Map<String, Object>> invoices = new java.util.ArrayList<>();
+            
+            if (response != null && response.containsKey("QueryResponse")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> queryResponse = (Map<String, Object>) response.get("QueryResponse");
+                
+                if (queryResponse.containsKey("Invoice")) {
+                    @SuppressWarnings("unchecked")
+                    java.util.List<Map<String, Object>> qbInvoices = 
+                        (java.util.List<Map<String, Object>>) queryResponse.get("Invoice");
+                    
+                    // Enhance each invoice with Aforo invoice ID from mapping table
+                    for (Map<String, Object> invoice : qbInvoices) {
+                        String qbInvoiceId = invoice.get("Id").toString();
+                        
+                        // Look up Aforo invoice ID from mapping
+                        mappingRepository.findByOrganizationIdAndEntityTypeAndQuickbooksId(
+                            organizationId,
+                            QuickBooksMapping.EntityType.INVOICE,
+                            qbInvoiceId
+                        ).ifPresent(mapping -> {
+                            invoice.put("aforoInvoiceId", mapping.getAforoId());
+                            invoice.put("syncedAt", mapping.getCreatedAt());
+                        });
+                        
+                        invoices.add(invoice);
+                    }
+                    
+                    log.info("Fetched {} invoices from QuickBooks", invoices.size());
+                }
+            }
+            
+            // Build response with metadata
+            Map<String, Object> result = new HashMap<>();
+            result.put("invoices", invoices);
+            result.put("count", invoices.size());
+            result.put("maxResults", limit);
+            result.put("startPosition", start);
+            result.put("hasMore", invoices.size() == limit);
+            
+            return result;
+            
+        } catch (WebClientResponseException e) {
+            log.error("QuickBooks API error fetching invoices: {} - {}", 
+                     e.getStatusCode(), e.getResponseBodyAsString());
+            throw new QuickBooksException("Failed to fetch invoices: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected error fetching invoices: {}", e.getMessage(), e);
+            throw new QuickBooksException("Failed to fetch invoices", e);
+        }
+    }
+
+    /**
+     * Get single invoice details from QuickBooks.
+     * Includes full invoice data with line items.
+     * 
+     * @param organizationId Organization ID
+     * @param quickbooksInvoiceId QuickBooks invoice ID
+     * @return Invoice details with line items
+     */
+    @Retry(name = "quickbooks")
+    public Map<String, Object> getSingleInvoice(Long organizationId, String quickbooksInvoiceId) {
+        QuickBooksConnection connection = oauthService.getActiveConnection(organizationId);
+        
+        try {
+            log.info("Fetching invoice details from QuickBooks: invoice ID = {}", quickbooksInvoiceId);
+            
+            String url = apiConfig.getResourceUrl(connection.getRealmId(), "invoice") 
+                       + "/" + quickbooksInvoiceId;
+            
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = webClient.get()
+                .uri(url)
+                .header("Authorization", "Bearer " + connection.getAccessToken())
+                .header("Accept", MediaType.APPLICATION_JSON_VALUE)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+            
+            if (response != null && response.containsKey("Invoice")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> invoice = (Map<String, Object>) response.get("Invoice");
+                
+                // Add Aforo invoice ID from mapping if it exists
+                mappingRepository.findByOrganizationIdAndEntityTypeAndQuickbooksId(
+                    organizationId,
+                    QuickBooksMapping.EntityType.INVOICE,
+                    quickbooksInvoiceId
+                ).ifPresent(mapping -> {
+                    invoice.put("aforoInvoiceId", mapping.getAforoId());
+                    invoice.put("syncedAt", mapping.getCreatedAt());
+                });
+                
+                log.info("Successfully fetched invoice details for ID: {}", quickbooksInvoiceId);
+                return invoice;
+            }
+            
+            throw new QuickBooksException("Invoice not found in QuickBooks response");
+            
+        } catch (WebClientResponseException e) {
+            log.error("QuickBooks API error fetching invoice: {} - {}", 
+                     e.getStatusCode(), e.getResponseBodyAsString());
+            throw new QuickBooksException("Failed to fetch invoice: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected error fetching invoice: {}", e.getMessage(), e);
+            throw new QuickBooksException("Failed to fetch invoice", e);
+        }
+    }
 }
+
