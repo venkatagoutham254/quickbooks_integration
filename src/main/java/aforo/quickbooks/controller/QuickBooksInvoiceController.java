@@ -175,4 +175,26 @@ public class QuickBooksInvoiceController {
             );
         }
     }
+
+    /**
+     * Security check: Verify that the invoice belongs to the organization.
+     * Checks the mapping table to ensure the organization has access to this invoice.
+     */
+    private void verifyInvoiceOwnership(Long organizationId, String quickbooksInvoiceId) {
+        Optional<QuickBooksMapping> mapping = mappingRepository
+            .findByOrganizationIdAndEntityTypeAndQuickbooksId(
+                organizationId,
+                QuickBooksMapping.EntityType.INVOICE,
+                quickbooksInvoiceId
+            );
+
+        if (mapping.isEmpty()) {
+            log.warn("Invoice {} not found or access denied for organization {}", 
+                    quickbooksInvoiceId, organizationId);
+            throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Invoice not found or access denied"
+            );
+        }
+    }
 }
