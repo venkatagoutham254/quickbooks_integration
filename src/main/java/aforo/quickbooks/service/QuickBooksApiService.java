@@ -25,6 +25,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Service for QuickBooks API operations (customers, invoices, payments).
@@ -700,24 +701,36 @@ public class QuickBooksApiService {
                     java.util.List<Map<String, Object>> qbInvoices = 
                         (java.util.List<Map<String, Object>>) queryResponse.get("Invoice");
                     
-                    // Enhance each invoice with Aforo invoice ID from mapping table
+                    // Filter and enhance invoices - ONLY include those in mapping table (Aforo-synced)
                     for (Map<String, Object> invoice : qbInvoices) {
                         String qbInvoiceId = invoice.get("Id").toString();
                         
-                        // Look up Aforo invoice ID from mapping
-                        mappingRepository.findByOrganizationIdAndEntityTypeAndQuickbooksId(
-                            organizationId,
-                            QuickBooksMapping.EntityType.INVOICE,
-                            qbInvoiceId
-                        ).ifPresent(mapping -> {
+                        // Check if this invoice exists in mapping table
+                        Optional<QuickBooksMapping> mappingOpt = mappingRepository
+                            .findByOrganizationIdAndEntityTypeAndQuickbooksId(
+                                organizationId,
+                                QuickBooksMapping.EntityType.INVOICE,
+                                qbInvoiceId
+                            );
+                        
+                        // Only include invoices that are mapped (synced from Aforo)
+                        if (mappingOpt.isPresent()) {
+                            QuickBooksMapping mapping = mappingOpt.get();
+                            
+                            // Add PDF URLs for easy access (with organizationId for browser direct access)
+                            invoice.put("pdfUrl", "/api/quickbooks/invoices/" + qbInvoiceId + "/pdf?organizationId=" + organizationId);
+                            invoice.put("pdfDownloadUrl", "/api/quickbooks/invoices/" + qbInvoiceId + "/pdf?organizationId=" + organizationId + "&download=true");
+                            
+                            // Add Aforo invoice ID from mapping
                             invoice.put("aforoInvoiceId", mapping.getAforoId());
                             invoice.put("syncedAt", mapping.getCreatedAt());
-                        });
-                        
-                        invoices.add(invoice);
+                            
+                            invoices.add(invoice);
+                        }
+                        // Skip invoices not in mapping table (created directly in QuickBooks)
                     }
                     
-                    log.info("Fetched {} invoices from QuickBooks", invoices.size());
+                    log.info("Fetched {} Aforo-synced invoices from QuickBooks (filtered from mapping table)", invoices.size());
                 }
             }
             

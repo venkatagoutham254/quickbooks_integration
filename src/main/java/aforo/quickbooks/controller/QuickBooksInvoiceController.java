@@ -112,25 +112,39 @@ public class QuickBooksInvoiceController {
     /**
      * Get invoice PDF from QuickBooks.
      * Returns the PDF file that can be viewed or downloaded.
-     * Organization ID is automatically extracted from JWT token.
+     * Organization ID can be from JWT token or query parameter (for browser access).
      * 
-     * Example: GET /api/quickbooks/invoices/163/pdf?download=true
+     * Example: GET /api/quickbooks/invoices/163/pdf?organizationId=2&download=true
      * 
      * This will return the PDF with proper headers for inline viewing or download.
      */
     @GetMapping("/{invoiceId}/pdf")
     @Operation(
         summary = "Get invoice PDF",
-        description = "Download or view invoice PDF from QuickBooks. Organization ID automatically extracted from JWT token."
+        description = "Download or view invoice PDF from QuickBooks. Organization ID from JWT token or query parameter."
     )
     public ResponseEntity<byte[]> getInvoicePdf(
             @Parameter(description = "QuickBooks invoice ID", required = true)
             @PathVariable String invoiceId,
             
+            @Parameter(description = "Organization ID (optional if JWT provided)")
+            @RequestParam(required = false) Long organizationId,
+            
             @Parameter(description = "Download as file (default: false = inline view)")
             @RequestParam(required = false, defaultValue = "false") boolean download) {
         
-        Long organizationId = TenantContext.require();
+        // Try JWT first, fallback to query parameter
+        if (organizationId == null) {
+            if (TenantContext.isSet()) {
+                organizationId = TenantContext.getOrganizationId();
+            } else {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Organization ID required: provide JWT token or organizationId parameter"
+                );
+            }
+        }
+        
         log.info("Fetching PDF for invoice {} (organization: {}, download: {})", 
                 invoiceId, organizationId, download);
         
