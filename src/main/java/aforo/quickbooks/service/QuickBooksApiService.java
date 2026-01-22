@@ -23,7 +23,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -655,8 +657,58 @@ public class QuickBooksApiService {
     }
 
     /**
+     * Get ALL invoices from QuickBooks.
+     * Automatically handles pagination internally to fetch all invoices.
+     * Returns invoices with Aforo invoice IDs from mapping table.
+     * 
+     * @param organizationId Organization ID
+     * @return Map containing list of all invoices and metadata
+     */
+    @Retry(name = "quickbooks")
+    public Map<String, Object> getAllInvoices(Long organizationId) {
+        log.info("Fetching ALL invoices from QuickBooks for organization: {}", organizationId);
+        
+        List<Map<String, Object>> allInvoices = new ArrayList<>();
+        int startPosition = 1;
+        int maxResults = 1000; // Use maximum allowed by QuickBooks API
+        boolean hasMore = true;
+        int totalFetched = 0;
+        
+        // Loop through all pages until we get all invoices
+        while (hasMore) {
+            Map<String, Object> pageResult = getInvoicesList(organizationId, maxResults, startPosition);
+            
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> pageInvoices = (List<Map<String, Object>>) pageResult.get("invoices");
+            
+            if (pageInvoices != null && !pageInvoices.isEmpty()) {
+                allInvoices.addAll(pageInvoices);
+                totalFetched += pageInvoices.size();
+                
+                // Check if there are more pages
+                hasMore = pageInvoices.size() == maxResults;
+                startPosition += maxResults;
+                
+                log.info("Fetched {} invoices in this page, total so far: {}", pageInvoices.size(), totalFetched);
+            } else {
+                hasMore = false;
+            }
+        }
+        
+        log.info("Completed fetching all invoices: total {} invoices", totalFetched);
+        
+        // Build final response
+        Map<String, Object> result = new HashMap<>();
+        result.put("invoices", allInvoices);
+        result.put("totalCount", totalFetched);
+        
+        return result;
+    }
+
+    /**
      * Get list of invoices from QuickBooks with pagination.
      * Returns invoices with Aforo invoice IDs from mapping table.
+     * This is an internal method used by getAllInvoices().
      * 
      * @param organizationId Organization ID
      * @param maxResults Maximum number of results (default 100, max 1000)
@@ -664,7 +716,7 @@ public class QuickBooksApiService {
      * @return Map containing list of invoices and metadata
      */
     @Retry(name = "quickbooks")
-    public Map<String, Object> getInvoicesList(Long organizationId, Integer maxResults, Integer startPosition) {
+    private Map<String, Object> getInvoicesList(Long organizationId, Integer maxResults, Integer startPosition) {
         QuickBooksConnection connection = oauthService.getActiveConnection(organizationId);
         
         // Set defaults and limits
