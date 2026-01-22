@@ -36,29 +36,23 @@ public class QuickBooksInvoiceController {
 
     /**
      * Get list of invoices from QuickBooks.
-     * Returns all invoices for the organization with pagination support.
+     * Returns ALL invoices for the organization (automatically handles pagination internally).
      * Organization ID is automatically extracted from JWT token.
      * 
-     * Example: GET /api/quickbooks/invoices?maxResults=50&startPosition=1
+     * Example: GET /api/quickbooks/invoices
      */
     @GetMapping
     @Operation(
-        summary = "Get invoices from QuickBooks",
-        description = "Fetch list of invoices from QuickBooks with pagination. Organization ID automatically extracted from JWT token."
+        summary = "Get all invoices from QuickBooks",
+        description = "Fetch all invoices from QuickBooks. Organization ID automatically extracted from JWT token. Pagination is handled internally."
     )
-    public ResponseEntity<Map<String, Object>> getInvoices(
-            @Parameter(description = "Maximum number of results (1-1000, default 100)")
-            @RequestParam(required = false, defaultValue = "100") Integer maxResults,
-            
-            @Parameter(description = "Starting position for pagination (default 1)")
-            @RequestParam(required = false, defaultValue = "1") Integer startPosition) {
+    public ResponseEntity<Map<String, Object>> getInvoices() {
         
         Long organizationId = TenantContext.require();
-        log.info("Fetching invoices for organization: {}, maxResults: {}, startPosition: {}", 
-                organizationId, maxResults, startPosition);
+        log.info("Fetching all invoices for organization: {}", organizationId);
         
         try {
-            Map<String, Object> result = apiService.getInvoicesList(organizationId, maxResults, startPosition);
+            Map<String, Object> result = apiService.getAllInvoices(organizationId);
             return ResponseEntity.ok(result);
             
         } catch (Exception e) {
