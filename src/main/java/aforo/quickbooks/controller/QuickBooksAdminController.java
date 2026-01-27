@@ -1,7 +1,9 @@
 package aforo.quickbooks.controller;
 
+import aforo.quickbooks.client.MeteringServiceClient;
 import aforo.quickbooks.client.OrganizationServiceClient;
 import aforo.quickbooks.dto.AforoCustomerRequest;
+import aforo.quickbooks.dto.MeteringInvoiceDTO;
 import aforo.quickbooks.dto.OrganizationCustomerDTO;
 import aforo.quickbooks.entity.QuickBooksMapping;
 import aforo.quickbooks.mapper.CustomerMapper;
@@ -35,6 +37,7 @@ public class QuickBooksAdminController {
     private final QuickBooksConnectionRepository connectionRepository;
     private final QuickBooksMappingRepository mappingRepository;
     private final OrganizationServiceClient organizationServiceClient;
+    private final MeteringServiceClient meteringServiceClient;
     private final CustomerMapper customerMapper;
 
     /**
@@ -390,6 +393,74 @@ public class QuickBooksAdminController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
             response.put("message", "Failed to get un-synced customers: " + e.getMessage());
+
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    /**
+     * Get invoice sync overview
+     *
+     * GET /api/quickbooks/admin/invoice-overview
+     *
+     * Shows:
+     * - Total invoices in metering service
+     * - How many are synced to QuickBooks
+     * - How many are NOT synced
+     * - List of un-synced invoice IDs
+     */
+    @GetMapping("/invoice-overview")
+    @Operation(summary = "Get invoice sync overview",
+              description = "Shows invoices in metering service vs synced to QuickBooks. Organization ID extracted from JWT token.")
+    public ResponseEntity<Map<String, Object>> getInvoiceOverview(HttpServletRequest request) {
+        Long organizationId = TenantContext.require();
+        String authToken = request.getHeader("Authorization");
+
+        log.info("📊 Fetching invoice overview for organization {}", organizationId);
+
+        try {
+            List<MeteringInvoiceDTO> allInvoices = meteringServiceClient
+                    .getAllInvoices(authToken, organizationId);
+
+            List<QuickBooksMapping> syncedMappings = mappingRepository
+                    .findByOrganizationIdAndEntityType(organizationId, QuickBooksMapping.EntityType.INVOICE);
+
+            Set<String> syncedInvoiceIds = syncedMappings.stream()
+                    .map(QuickBooksMapping::getAforoId)
+                    .collect(Collectors.toSet());
+
+            List<Map<String, Object>> unsyncedInvoices = allInvoices.stream()
+                    .filter(invoice -> !syncedInvoiceIds.contains(invoice.getAforoId()))
+                    .map(invoice -> {
+                        Map<String, Object> info = new HashMap<>();
+                        info.put("invoiceId", invoice.getInvoiceId());
+                        info.put("aforoId", invoice.getAforoId());
+                        info.put("invoiceNumber", invoice.getInvoiceNumber());
+                        info.put("totalAmount", invoice.getTotalAmount());
+                        info.put("status", invoice.getStatus());
+                        info.put("billingPeriodStart", invoice.getBillingPeriodStart());
+                        info.put("billingPeriodEnd", invoice.getBillingPeriodEnd());
+                        return info;
+                    })
+                    .toList();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("organizationId", organizationId);
+            response.put("totalInvoices", allInvoices.size());
+            response.put("syncedToQuickBooks", syncedInvoiceIds.size());
+            response.put("notSyncedToQuickBooks", unsyncedInvoices.size());
+            response.put("unsyncedInvoices", unsyncedInvoices);
+            response.put("syncPercentage", allInvoices.isEmpty() ? 0 :
+                    (double) syncedInvoiceIds.size() / allInvoices.size() * 100);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("❌ Failed to get invoice overview: {}", e.getMessage(), e);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "Failed to get overview: " + e.getMessage());
 
             return ResponseEntity.internalServerError().body(response);
         }
