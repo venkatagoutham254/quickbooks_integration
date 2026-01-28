@@ -30,7 +30,7 @@ quickbooks:
   oauth:
     client-id: ABCnALhqOW94O1K82fqZR83HxbzsTUk0Uiqw5hl5U6ypWcsMOe
     client-secret: 5LC895awdf526VCPtUEbFOs26OiMiMAZ3gmYUkWk
-    redirect-uri: ${QUICKBOOKS_OAUTH_REDIRECT_URI:http://quickbooks.aforo.space:8095/api/quickbooks/callback}
+    redirect-uri: ${QUICKBOOKS_OAUTH_REDIRECT_URI:http://quickbooks.dev.aforo.space:8095/api/quickbooks/callback}
     scope: com.intuit.quickbooks.accounting
     authorization-url: https://appcenter.intuit.com/connect/oauth2
     token-url: https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer
