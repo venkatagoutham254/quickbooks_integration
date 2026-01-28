@@ -16,7 +16,7 @@ public class OrganizationServiceProperties {
      * Base URL of the organization service
      * Example: http://localhost:8081 or http://host.docker.internal:8081
      */
-    private String baseUrl = "http://localhost:8081";
+    private String baseUrl = "http://org.dev.aforo.space:8081";
     
     /**
      * Timeout in seconds for organization service calls

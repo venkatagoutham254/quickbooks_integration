@@ -53,18 +53,18 @@ aforo:
     secret: ${JWT_SECRET:change-me-please-change-me-32-bytes-min}
     expiryMinutes: 120
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:*,http://127.0.0.1:*,http://aforo.space,https://aforo.space,http://quickbooks.aforo.space,https://quickbooks.aforo.space,http://54.221.164.5,https://54.221.164.5}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://ui.dev.aforo.space,http://product.dev.aforo.space:8080,http://metering.dev.aforo.space:8092,http://usage.dev.aforo.space:8081,http://ingestion.dev.aforo.space:8088,http://kong.dev.aforo.space:8086,http://org.dev.aforo.space:8081,http://quickbooks.dev.aforo.space:8095,http://subscription.dev.aforo.space:8084,http://localhost:3000,http://localhost:*,http://127.0.0.1:*,http://aforo.space,https://aforo.space,http://54.221.164.5,https://54.221.164.5}
     allowed-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
     allowed-headers: "Authorization,Content-Type,X-Organization-Id"
     allow-credentials: true
   organization-service:
-    base-url: ${ORGANIZATION_SERVICE_URL:http://44.201.19.187:8081}
+    base-url: ${ORGANIZATION_SERVICE_URL:http://org.dev.aforo.space:8081}
     timeout-seconds: 30
   metering-service:
-    base-url: ${METERING_SERVICE_URL:http://98.86.167.163:8092}
+    base-url: ${METERING_SERVICE_URL:http://metering.dev.aforo.space:8092}
     timeout-seconds: 30
   rate-plan-service:
-    base-url: ${RATE_PLAN_SERVICE_URL:http://3.208.93.68:8080}
+    base-url: ${RATE_PLAN_SERVICE_URL:http://product.dev.aforo.space:8080}
     timeout-seconds: 30
 
 # Resilience4j Retry Configuration
